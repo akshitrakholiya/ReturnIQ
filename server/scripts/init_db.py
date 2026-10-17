@@ -22,6 +22,8 @@ def ensure_roles_and_db(reset: bool) -> None:
                          (settings.tools_db_user, settings.tools_db_password)):
             if not c.execute(text("SELECT 1 FROM pg_roles WHERE rolname=:u"), {"u": user}).scalar():
                 c.execute(text(f'CREATE ROLE "{user}" LOGIN PASSWORD :p'.replace(":p", f"'{pw}'")))
+            else:
+                c.execute(text(f'ALTER ROLE "{user}" WITH PASSWORD :p'.replace(":p", f"'{pw}'")))
         # AlloyDB's admin user is not a true superuser: it must be a member of a role to create a database owned by it
         c.execute(text(f'GRANT "{settings.db_user}" TO CURRENT_USER'))
         if reset:
@@ -29,6 +31,12 @@ def ensure_roles_and_db(reset: bool) -> None:
         if not c.execute(text("SELECT 1 FROM pg_database WHERE datname=:d"), {"d": settings.db_name}).scalar():
             c.execute(text(f'CREATE DATABASE "{settings.db_name}" OWNER "{settings.db_user}"'))
             print(f"created database {settings.db_name}")
+    # PostgreSQL 15+ removed default CREATE on public schema for non-superusers.
+    # Connect as admin directly to the database and grant permissions on schema public:
+    db_admin = create_engine(settings.url(settings.admin_db_user, settings.admin_db_password, db=settings.db_name), isolation_level="AUTOCOMMIT")
+    with db_admin.connect() as c:
+        c.execute(text(f'GRANT ALL ON SCHEMA public TO "{settings.db_user}"'))
+        c.execute(text(f'GRANT ALL ON SCHEMA public TO public'))
 
 
 def apply_schema() -> bool:

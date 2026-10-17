@@ -84,9 +84,15 @@ class Settings(BaseSettings):
         return _chain(self.media_model, self.model_fallbacks)
 
     def url(self, user: str | None = None, password: str | None = None, db: str | None = None) -> str:
+        import urllib.parse
         user = self.db_user if user is None else user
         password = self.db_password if password is None else password
-        auth = f"{user}:{password}@" if password else (f"{user}@" if user else "")
+        if user and password is not None:
+            auth = f"{urllib.parse.quote_plus(user)}:{urllib.parse.quote_plus(password)}@"
+        elif user:
+            auth = f"{urllib.parse.quote_plus(user)}@"
+        else:
+            auth = ""
         return f"postgresql+psycopg://{auth}{self.db_host}:{self.db_port}/{db or self.db_name}"
 
     @property
