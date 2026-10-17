@@ -1,7 +1,6 @@
 .venv/
 .env
 .env.alloydb
-.env.example
 __pycache__/
 *.pyc
 media_uploads/

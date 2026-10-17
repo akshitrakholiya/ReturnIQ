@@ -16,6 +16,20 @@ uvicorn app.main:app --reload          # http://localhost:8000  (Swagger: /docs)
 
 Run every command from inside `server/`. Full instructions, the web app and troubleshooting are in the [root README](../README.md).
 
+### Quicker: restore the shared demo database
+
+The data is not in git. Instead of the load/seed/plant scripts above, ask the team for the `returniq_share` folder
+(`returniq.dump` + `media_uploads.zip`, see its `RESTORE.md`) and run:
+
+```powershell
+python -m scripts.init_db --reset          # roles, database, empty tables
+docker cp path\to\returniq.dump returniq-pg:/tmp/returniq.dump
+docker exec returniq-pg pg_restore -U postgres -d returniq --clean --if-exists --no-owner --role=returniq_app /tmp/returniq.dump
+Expand-Archive path\to\media_uploads.zip -DestinationPath . -Force
+```
+
+Keep `REPORT_AS_OF=2026-10-16` in `.env` (it is in `.env.example`) so the demo data stays inside the 90-day window.
+
 ## Flow B (product reports + seller Q&A)
 
 | Step | Code | |
