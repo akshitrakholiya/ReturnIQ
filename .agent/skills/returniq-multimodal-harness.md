@@ -5,10 +5,14 @@ Manage multi-modal asset paths, image degradation testing, and multimodal Gemini
 
 ## Media Rules & Integration Directives
 1. **Hierarchical Storage Convention:**
-   - Standardize media asset paths strictly under local or cloud buckets:
-     - Listing shots: `./mock_storage/listings/<product_id>/<product_id>_<angle>.jpg`
-     - Return uploads: `./mock_storage/returns/<product_id>/<return_id>/<return_id>_defect.jpg`
-   - Store only storage URLs/paths in the database (`return_media.storage_url`, `product.listing_image_urls`), never raw image bytes[cite: 5, 17, 18].
+   - Media paths are relative to the media storage root (`MEDIA_DIR`, default `server/media_uploads/`; later a GCS bucket):
+     - Listing shots: `listings/<product_id>/<product_id>_<angle>.jpg`
+     - Return uploads from the dataset: `returns/<product_id>/<return_id>/<return_id>_defect.jpg`
+     - Customer uploads: `uploads/<uuid>.<ext>`
+   - Store only that path in the database (`return_media.storage_url`, `product.listing_image_urls`): no `local://` prefix,
+     no host, never a signed URL, never raw image bytes. `app/services/storage.py` resolves the location and builds the
+     view URL at read time; only external listing images set by `scripts/set_listing_images.py` may be full `https://` URLs.
+     Older databases with `local://...` values: `python -m scripts.migrate_media_paths`[cite: 5, 17, 18].
 
 2. **Multimodal Analysis (`analyze_media`):**
    - Read image paths from disk or Google Cloud Storage[cite: 4, 5].
