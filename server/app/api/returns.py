@@ -23,14 +23,14 @@ def _validate_media(items) -> list[dict]:
         raise HTTPException(422, f"At most {settings.max_media_files} media files per return")
     rows, seen = [], set()
     for m in items:
-        key = storage.key_from_url(m.storage_url)
+        key = storage.key(m.storage_url)
         if key is None or not storage.exists(key):
             raise HTTPException(422, f"Media not uploaded or not from our storage: {m.storage_url}")
         if key in seen:
             raise HTTPException(422, f"Duplicate media: {m.storage_url}")
         seen.add(key)
         mime, mtype = EXT_INFO[key.rsplit(".", 1)[-1]]
-        rows.append(dict(type=mtype, storage_url=m.storage_url, mime_type=mime, size_bytes=storage.size(key)))
+        rows.append(dict(type=mtype, storage_url=key, mime_type=mime, size_bytes=storage.size(key)))
     return rows
 
 

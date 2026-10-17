@@ -15,7 +15,7 @@ class UploadUrlIn(BaseModel):
 class UploadUrlOut(BaseModel):
     upload_url: str
     method: str = "PUT"
-    storage_url: str  # send this back in POST /returns
+    storage_url: str  # media path; send it back in POST /returns
     expires_in: int
 
 
@@ -26,7 +26,7 @@ def create_upload_url(body: UploadUrlIn):
         raise HTTPException(415, f"Unsupported type. Allowed: {', '.join(ALLOWED)}")
     key = storage.new_key(body.content_type)
     url, ttl = storage.signed_upload_url(key)
-    return UploadUrlOut(upload_url=url, storage_url=storage.storage_url(key), expires_in=ttl)
+    return UploadUrlOut(upload_url=url, storage_url=key, expires_in=ttl)
 
 
 @router.put("/local/{key:path}", status_code=201)
@@ -47,7 +47,7 @@ async def upload_local(key: str, request: Request, exp: int, sig: str):
     if len(data) > limit:
         raise HTTPException(413, f"File too large (max {limit // (1024 * 1024)} MB)")
     storage.save(key, data)
-    return {"storage_url": storage.storage_url(key), "size_bytes": len(data)}
+    return {"storage_url": key, "size_bytes": len(data)}
 
 
 @router.get("/local/{key:path}")

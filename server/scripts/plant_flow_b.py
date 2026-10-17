@@ -71,7 +71,7 @@ class Planter:
 
     def media_url(self, product_id: str) -> str | None:
         files = sorted((Path(settings.media_dir) / "returns" / product_id).glob("*/*.jpg"))
-        return f"local://{files[0].relative_to(settings.media_dir).as_posix()}" if files else None
+        return files[0].relative_to(settings.media_dir).as_posix() if files else None
 
     # ── writers ──
     def order(self, prefix: str, p: dict, variant: dict, when: datetime, batch: str | None = None,

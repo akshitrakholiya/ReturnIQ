@@ -30,6 +30,13 @@ Expand-Archive path\to\media_uploads.zip -DestinationPath . -Force
 
 Keep `REPORT_AS_OF=2026-10-16` in `.env` (it is in `.env.example`) so the demo data stays inside the 90-day window.
 
+### Media references
+
+`return_media.storage_url` and `product.listing_image_urls` hold only the media path inside the storage
+(`returns/P19/r_255/r_255_defect.jpg`); `app/services/storage.py` decides where that lives and builds the URL
+at read time, so moving to Cloud Storage is a config change. A database from before this change still has
+`local://...` values: convert it once with `python -m scripts.migrate_media_paths`.
+
 ## Flow B (product reports + seller Q&A)
 
 | Step | Code | |
