@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from app.api import demo, media, returns
+from app.api import demo, media, products, returns
 from app.db.session import engine
 
 app = FastAPI(title="ReturnIQ API")
@@ -12,6 +12,7 @@ app.add_middleware(  # the React dev server (Vite) runs on another port
 app.include_router(demo.router)
 app.include_router(media.router)
 app.include_router(returns.router)
+app.include_router(products.router)
 
 
 @app.get("/health")

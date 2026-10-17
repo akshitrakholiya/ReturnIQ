@@ -1,6 +1,7 @@
 # ReturnIQ web
 
-React + TypeScript + Vite test console for Flow A (customer return form, reviewer queue, review screen).
+React + TypeScript + Vite test console: Flow A (customer return form, reviewer queue, review screen) and Flow B
+(Seller tab: My Products, product report with progress steps and clickable evidence, Q&A chat).
 
 ```bash
 cd web

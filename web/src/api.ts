@@ -1,4 +1,7 @@
-import type { DemoOrder, DemoProduct, QueueItem, ReturnDetail, Cause } from './types'
+import type {
+  Cause, DemoOrder, DemoProduct, EvidencePack, QAResponse, QATurn, QueueItem, ReportResponse, ReturnDetail, Seller,
+  SellerProduct,
+} from './types'
 
 export const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -38,4 +41,17 @@ export const api = {
   review: (id: string, b: { decision: 'accepted' | 'rejected'; final_root_cause?: Cause; note?: string; reviewer: string }) =>
     req(`/returns/${id}/review`, json('POST', b)),
   reanalyze: (id: string) => req(`/returns/${id}/reanalyze`, { method: 'POST' }),
+
+  // Flow B (seller)
+  sellers: () => req<Seller[]>('/sellers'),
+  sellerProducts: (sellerId: string) => req<SellerProduct[]>(`/sellers/${sellerId}/products`),
+  /** fresh saved report, or a started/joined run to poll */
+  report: (productId: string) => req<ReportResponse>(`/products/${productId}/report`),
+  refreshReport: (productId: string) => req<ReportResponse>(`/products/${productId}/report/refresh`, { method: 'POST' }),
+  reportRun: (productId: string, runId: string) => req<ReportResponse>(`/products/${productId}/report/runs/${runId}`),
+  evidencePack: (productId: string, packId: string) => req<EvidencePack>(`/products/${productId}/evidence-packs/${packId}`),
+  ask: (productId: string, question: string, sessionId: string | null) =>
+    req<QAResponse>(`/products/${productId}/questions`, json('POST', { question, session_id: sessionId })),
+  questions: (productId: string, sessionId: string) =>
+    req<QATurn[]>(`/products/${productId}/questions?session_id=${encodeURIComponent(sessionId)}`),
 }
