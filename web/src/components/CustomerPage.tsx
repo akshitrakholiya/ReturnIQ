@@ -3,7 +3,7 @@ import { api } from '../api'
 import { usePolling } from '../usePolling'
 import type { DemoOrder, DemoProduct } from '../types'
 import { STATED_REASONS } from '../types'
-import { ErrorBox, StatusBadge, label, money, when } from './common'
+import { ErrorBox, StatusBadge, label, money, productName, when } from './common'
 import { MediaGallery } from './MediaGallery'
 import { VerdictView } from './VerdictView'
 
@@ -19,7 +19,7 @@ function Progress({ returnId, onReview }: { returnId: string; onReview: (id: str
         <h3>Return <code>{data.id}</code> <StatusBadge status={data.status} /></h3>
         {!working && <button onClick={() => onReview(data.id)}>Open in reviewer →</button>}
       </div>
-      <p className="muted">{data.product_name} · {Object.entries(data.variant).map(([k, v]) => `${k}: ${v}`).join(', ')} · batch {data.batch_id ?? '—'}</p>
+      <p className="muted">{productName(data.product_name)} · {Object.entries(data.variant).map(([k, v]) => `${k}: ${v}`).join(', ')} · batch {data.batch_id ?? '—'}</p>
       <p>Customer said <strong>{label(data.stated_reason)}</strong>{data.comment ? <> — “{data.comment}”</> : null}</p>
       <MediaGallery media={data.media} />
       {working && <div className="spinner-row"><span className="spinner" /> The AI is analyzing this return ({label(data.status)})… usually 15–30 s</div>}
@@ -76,7 +76,7 @@ export function CustomerPage({ onReview }: { onReview: (id: string) => void }) {
       <label>Product
         <select value={productId} onChange={(e) => setProductId(e.target.value)} required>
           <option value="">Choose a product…</option>
-          {products.map((p) => <option key={p.id} value={p.id} disabled={!p.returnable_orders}>{p.name} ({label(p.category)}) — {p.returnable_orders} returnable orders</option>)}
+          {products.map((p) => <option key={p.id} value={p.id} disabled={!p.returnable_orders}>{productName(p.name)} ({label(p.category)}) — {p.returnable_orders} returnable orders</option>)}
         </select>
       </label>
       <label>Order

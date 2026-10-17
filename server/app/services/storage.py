@@ -1,5 +1,10 @@
 """Media storage. LocalStorage today; a GcsStorage with the same methods replaces it
-when the Google Cloud project exists (signed URL via blob.generate_signed_url)."""
+when the Google Cloud project exists (signed URL via blob.generate_signed_url).
+
+The database stores only the media path inside the storage, e.g. 'returns/P09/r_172/r_172_defect.jpg'.
+Where that path lives (local folder or bucket) and the URL to show it are decided here from config,
+so moving to Cloud Storage changes config, not data. A full https:// URL is kept as is: only listing
+images set by scripts/set_listing_images.py can be external."""
 import hashlib
 import hmac
 import time
@@ -21,9 +26,10 @@ ALLOWED = {
 EXT_INFO = {ext: (ctype, mtype) for ctype, (ext, mtype) in ALLOWED.items()}
 
 
-class LocalStorage:
-    scheme = "local://"
+LEGACY_PREFIX = "local://"  # older rows stored 'local://<path>'; still read, never written
 
+
+class LocalStorage:
     def __init__(self):
         self.root = Path(settings.media_dir).resolve()
         self.root.mkdir(parents=True, exist_ok=True)
@@ -38,15 +44,22 @@ class LocalStorage:
             raise ValueError("invalid media key")
         return p
 
-    def storage_url(self, key: str) -> str:
-        return self.scheme + key
+    def key(self, stored: str) -> str | None:
+        """Stored value -> media path in our storage, or None for an external URL or an invalid path."""
+        if stored.startswith(LEGACY_PREFIX):
+            stored = stored[len(LEGACY_PREFIX):]
+        if not stored or "://" in stored or stored.startswith(("/", "\\")):
+            return None
+        try:
+            self.path(stored)
+        except ValueError:
+            return None
+        return stored
 
-    def key_from_url(self, storage_url: str) -> str | None:
-        return storage_url[len(self.scheme):] if storage_url.startswith(self.scheme) else None
-
-    def view_url(self, storage_url: str) -> str:
-        key = self.key_from_url(storage_url)
-        return f"{settings.public_base_url}/media/local/{key}" if key else storage_url
+    def view_url(self, stored: str) -> str:
+        """URL the browser can show. Built at read time, never stored (a GCS signed URL expires)."""
+        key = self.key(stored)
+        return f"{settings.public_base_url}/media/local/{key}" if key else stored
 
     # ── signed upload URL (HMAC + expiry) ──
     def _sig(self, key: str, exp: int) -> str:
@@ -85,13 +98,12 @@ _MAX_REMOTE_BYTES = 10 * 1024 * 1024
 
 
 def load_bytes(url: str) -> tuple[bytes, str] | None:
-    """Fetch an image/video by its stored URL -> (bytes, mime type), or None if it cannot be read.
+    """Fetch an image/video by its stored value -> (bytes, mime type), or None if it cannot be read.
 
-    local://  -> files under media_dir (customer uploads, locally stored listing images)
-    https://  -> downloaded (listing images from the dataset; written by our own pipeline, never by customers)
-    gs://     -> not wired yet; returns None until Cloud Storage replaces LocalStorage
+    media path -> file in our storage (customer uploads, listing images)
+    https://   -> downloaded (external listing images; written by our scripts, never by customers)
     """
-    key = storage.key_from_url(url)
+    key = storage.key(url)
     if key is not None:
         if not storage.exists(key):
             return None

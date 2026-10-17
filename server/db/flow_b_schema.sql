@@ -1,4 +1,10 @@
--- ReturnIQ · Flow B schema (NOT applied yet). Apply after schema.sql when we start Flow B.
+-- ReturnIQ · Flow B schema. Applied after schema.sql by scripts/init_db.py.
+
+-- "Now" for every report window. REPORT_AS_OF (passed by the API as the returniq.as_of setting)
+-- pins it to a date so demo data never ages out of the 90-day window; unset = now().
+CREATE FUNCTION returniq_as_of() RETURNS timestamptz LANGUAGE sql STABLE AS $$
+  SELECT COALESCE(NULLIF(current_setting('returniq.as_of', true), '')::timestamptz, now())
+$$;
 
 -- Flow B
 CREATE TYPE report_run_status AS ENUM ('gathering', 'finding_causes', 'preparing_fixes', 'done', 'failed');
@@ -61,6 +67,9 @@ CREATE TABLE report_run (
   finished_at  timestamptz
 );
 CREATE INDEX report_run_product_idx ON report_run (product_id, started_at);
+-- One active run per product (the API also takes an advisory lock before starting one).
+CREATE UNIQUE INDEX report_run_active_idx ON report_run (product_id)
+  WHERE status IN ('gathering', 'finding_causes', 'preparing_fixes');
 
 CREATE TABLE product_qa (
   id          text PRIMARY KEY DEFAULT 'qa_' || nextval('qa_seq'),
@@ -82,7 +91,7 @@ SELECT p.id AS product_id, p.seller_id, p.category, p.name,
        CASE WHEN count(o.id) = 0 THEN 0
             ELSE round(count(r.id)::numeric / count(o.id), 4) END AS return_rate
 FROM product p
-LEFT JOIN orders  o ON o.product_id = p.id AND o.order_date >= now() - interval '90 days'
+LEFT JOIN orders  o ON o.product_id = p.id AND o.order_date >= returniq_as_of() - interval '90 days' AND o.order_date < returniq_as_of()
 LEFT JOIN returns r ON r.order_id = o.id
 GROUP BY p.id;
 
@@ -101,7 +110,7 @@ SELECT m.product_id, m.seller_id, m.category, m.name,
        m.orders, m.returns, m.return_rate,
        (SELECT ec.cause
           FROM returns r
-          JOIN orders o ON o.id = r.order_id AND o.order_date >= now() - interval '90 days'
+          JOIN orders o ON o.id = r.order_id AND o.order_date >= returniq_as_of() - interval '90 days' AND o.order_date < returniq_as_of()
           JOIN v_return_effective_cause ec ON ec.return_id = r.id
          WHERE r.product_id = m.product_id AND ec.cause IS NOT NULL
          GROUP BY ec.cause ORDER BY count(*) DESC, ec.cause LIMIT 1) AS top_cause

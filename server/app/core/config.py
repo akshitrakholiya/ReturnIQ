@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -44,9 +45,39 @@ class Settings(BaseSettings):
     llm_retry_attempts: int = 4  # transient 429/5xx from Gemini, exponential backoff
     manual_review_confidence: float = 0.60
 
+    # Flow B (product reports). Thresholds live here so they can be tuned on the demo data.
+    report_as_of: str = ""                  # e.g. 2026-10-16: end of every report window; empty = now()
+    rca_model: str = ""                     # empty = return_model; set a stronger model if RCA quality needs it
+    max_rca_tool_calls: int = 6
+    max_qa_tool_calls: int = 5
+    min_returns_for_analysis: int = 5       # fewer -> "not enough data yet"
+    healthy_rate_multiplier: float = 1.2    # rate <= 1.2x category and not rising -> "looks healthy"
+    trend_change_ratio: float = 0.15        # rate moved >= 15% vs the previous period -> rising/falling
+    rca_min_returns: int = 5                # a root cause needs >= 5 supporting returns...
+    rca_min_share: float = 0.20             # ...and >= 20% of the period's returns
+    report_rebuild_min_reviews: int = 3     # rebuild a stale report once 3+ new reviewed returns exist
+    feedback_per_cause: int = 15            # comments/notes per top cause in the evidence pack
+    report_run_timeout_minutes: int = 10    # a run older than this is considered dead (server restarted)
+
     @property
     def return_models(self) -> list[str]:
         return _chain(self.return_model, self.model_fallbacks)
+
+    @property
+    def rca_models(self) -> list[str]:
+        return _chain(self.rca_model or self.return_model, self.model_fallbacks)
+
+    @property
+    def as_of(self) -> datetime:
+        """End of every Flow B report window (UTC). Same value the SQL views get via returniq_as_of()."""
+        if not self.report_as_of:
+            return datetime.now(timezone.utc)
+        dt = datetime.fromisoformat(self.report_as_of)
+        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+    def db_options(self) -> str:
+        """libpq startup options shared by both engines: pins returniq_as_of() in SQL to REPORT_AS_OF."""
+        return f"-c returniq.as_of={self.as_of.isoformat()}" if self.report_as_of else ""
 
     @property
     def media_models(self) -> list[str]:

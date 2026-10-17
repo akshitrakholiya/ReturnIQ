@@ -148,7 +148,7 @@ def add() -> None:
                 dest = Path(storage.root) / rel
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(sample, dest)
-                media_rows.append(dict(id=mid, return_id=rid, type="photo", storage_url=f"{storage.scheme}{rel}",
+                media_rows.append(dict(id=mid, return_id=rid, type="photo", storage_url=rel,
                                        mime_type="image/jpeg", size_bytes=dest.stat().st_size, created_at=r["created"]))
         insert(c, "returns", [dict(id=r["id"], order_id=r["order"]["id"], product_id=r["order"]["product_id"],
                                    customer_id=r["order"]["customer_id"], stated_reason=r["stated"], comment=r["comment"],

@@ -85,7 +85,7 @@ def load(dataset_dir: Path, copy_images: bool = True) -> None:
 
         insert(c, "product", [dict(id=p["id"], seller_id=p["seller_id"], category=p["category"], name=p["name"],
                                    description=p.get("description"), attributes=json.dumps(p.get("attributes", {})),
-                                   listing_image_urls=[f"{storage.scheme}{storage_path(u)}" for u in p["listing_image_urls"]])
+                                   listing_image_urls=[storage_path(u) for u in p["listing_image_urls"]])
                               for p in d["products"]])
 
         c.execute(text("""INSERT INTO orders (id, customer_id, product_id, variant, batch_id, price, order_date)
@@ -110,7 +110,7 @@ def load(dataset_dir: Path, copy_images: bool = True) -> None:
         for m in d["return_media"]:
             rel = storage_path(m["storage_url"])
             f = dataset_dir / "mock_storage" / rel
-            media_rows.append(dict(id=m["id"], return_id=m["return_id"], type=m["type"], storage_url=f"{storage.scheme}{rel}",
+            media_rows.append(dict(id=m["id"], return_id=m["return_id"], type=m["type"], storage_url=rel,
                                    mime_type="image/jpeg" if m["type"] == "photo" else "video/mp4",
                                    size_bytes=f.stat().st_size if f.exists() else None))
         insert(c, "return_media", media_rows)

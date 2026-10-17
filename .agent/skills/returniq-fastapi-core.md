@@ -16,7 +16,7 @@ Enforce the asynchronous architecture, background polling lifecycle, and boundar
 
 3. **Required Route Endpoints:**
    - **Flow A:** `POST /media/upload-url`, `POST /returns`, `GET /returns?status=awaiting_review`, `GET /returns/{id}`, `POST /returns/{id}/reanalyze`, `POST /returns/{id}/review`[cite: 16].
-   - **Flow B:** `GET /sellers`, `GET /sellers/{id}/products`, `GET /products/{id}/report`, `GET /products/{id}/report/runs/{run_id}`, `POST /products/{id}/report/refresh`, `POST /products/{id}/questions`, `GET /products/{id}/questions?session_id=`[cite: 16, 17].
+   - **Flow B:** `GET /sellers`, `GET /sellers/{id}/products`, `GET /products/{id}/report`, `GET /products/{id}/report/runs/{run_id}`, `POST /products/{id}/report/refresh`, `GET /products/{id}/evidence-packs/{pack_id}`, `POST /products/{id}/questions`, `GET /products/{id}/questions?session_id=`[cite: 16, 17].
 
 4. **Reviewer Invalidation Hook:**
    - When `POST /returns/{id}/review` completes, mark `product.report_stale = true` for that product to flag the report for rebuilding[cite: 6, 17, 19].

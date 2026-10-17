@@ -4,8 +4,8 @@
     python -m scripts.set_listing_images --product p_6 --urls https://example.com/a.jpg https://example.com/b.jpg
     python -m scripts.set_listing_images --product p_6 --clear
 
-Local files are copied into media_uploads/listings/<product id>/ and stored as local:// URLs.
-When Cloud Storage exists, this script will upload there and store gs:// URLs instead.
+Local files are copied into media_uploads/listings/<product id>/ and stored as their media path
+(listings/<product id>/<n>.jpg). --urls stores external https:// URLs as they are.
 """
 import argparse
 import mimetypes
@@ -46,7 +46,7 @@ def main():
             dest.mkdir(parents=True, exist_ok=True)
             name = f"{i}.{ALLOWED[ctype][0]}"
             shutil.copyfile(f, dest / name)
-            urls.append(storage.storage_url(f"listings/{p.id}/{name}"))
+            urls.append(f"listings/{p.id}/{name}")
         if not a.clear and not urls:
             sys.exit("Give image files, --urls, or --clear")
         c.execute(text("UPDATE product SET listing_image_urls = :u, report_stale = true, updated_at = now() WHERE id = :id"),

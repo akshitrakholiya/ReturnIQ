@@ -3,7 +3,7 @@ import { api } from '../api'
 import { usePolling } from '../usePolling'
 import type { Cause, QueueItem } from '../types'
 import { CAUSES } from '../types'
-import { Confidence, ErrorBox, StatusBadge, label, when } from './common'
+import { Confidence, ErrorBox, StatusBadge, label, productName, when } from './common'
 import { ListingGallery, MediaGallery } from './MediaGallery'
 import { VerdictView } from './VerdictView'
 
@@ -36,7 +36,7 @@ function Queue({ onOpen }: { onOpen: (id: string) => void }) {
         <tbody>
           {items.map((r) => (
             <tr key={r.id} onClick={() => onOpen(r.id)}>
-              <td><code>{r.id}</code></td><td>{r.product_name}</td><td><StatusBadge status={r.status} /></td>
+              <td><code>{r.id}</code></td><td>{productName(r.product_name)}</td><td><StatusBadge status={r.status} /></td>
               <td>{label(r.stated_reason)}</td>
               <td>{r.ai_root_cause ? <>{label(r.ai_root_cause)}{r.ai_root_cause !== r.stated_reason && <span className="mismatch" title="mismatch"> ≠</span>}</> : '—'}</td>
               <td>{r.confidence !== null ? <Confidence value={r.confidence} /> : '—'}</td>
@@ -67,7 +67,7 @@ function ReviewScreen({ id, onBack }: { id: string; onBack: () => void }) {
   const ai = data?.analysis?.root_cause
   useEffect(() => { if (ai) setCause(CAUSES.find((c) => c !== ai && c !== 'suspicious') ?? 'other') }, [ai])
 
-  if (!data) return <div className="card"><button className="secondary" onClick={onBack}>← Queue</button><p>Loading…</p><ErrorBox error={error} /></div>
+  if (!data) return <div className="card"><button className="link back" onClick={onBack}>← Back to queue</button><p>Loading…</p><ErrorBox error={error} /></div>
 
   const refresh = async () => setData(await api.detail(id))
   const canReview = data.status === 'awaiting_review' || data.status === 'analysis_failed'
@@ -90,13 +90,13 @@ function ReviewScreen({ id, onBack }: { id: string; onBack: () => void }) {
 
   return (
     <div>
-      <button className="secondary" onClick={onBack}>← Queue</button>
+      <button className="link back" onClick={onBack}>← Back to queue</button>
       <div className="card">
         <div className="row between">
           <h2>Return <code>{data.id}</code> <StatusBadge status={data.status} /></h2>
           {data.status !== 'reviewed' && data.status !== 'analyzing' && data.status !== 'pending_analysis' && <button className="secondary" disabled={busy} onClick={reanalyze}>Reanalyze</button>}
         </div>
-        <p><strong>{data.product_name}</strong> · {Object.entries(data.variant).map(([k, v]) => `${k}: ${v}`).join(', ')} · batch {data.batch_id ?? '—'} · order <code>{data.order_id}</code></p>
+        <p><strong>{productName(data.product_name)}</strong> · {Object.entries(data.variant).map(([k, v]) => `${k}: ${v}`).join(', ')} · batch {data.batch_id ?? '—'} · order <code>{data.order_id}</code></p>
         <p>Customer said <strong>{label(data.stated_reason)}</strong>{data.comment ? <> — “{data.comment}”</> : <span className="muted"> (no comment)</span>}</p>
         <h4>Customer's media</h4>
         <MediaGallery media={data.media} />
