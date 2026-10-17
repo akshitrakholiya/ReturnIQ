@@ -78,6 +78,18 @@ cd ../web && npm install && npm run dev   # http://localhost:5173
 Keep `REPORT_AS_OF=2026-10-16` in `.env` (it is in `.env.example`) so the demo data stays inside the 90-day report window.
 `python -m scripts.eval_flow_b` checks that Flow B finds every planted scenario.
 
+### Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| `pip install` fails with `OSError: [WinError 206] The filename or extension is too long` | Windows' 260-character path limit (`google-genai` has deep folders). Clone into a short path such as `D:\ReturnIQ`, or enable long paths once (admin PowerShell: `New-ItemProperty -Path HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem -Name LongPathsEnabled -Value 1 -PropertyType DWORD -Force`, then restart the terminal). Delete `.venv` and install again. |
+| `docker: error during connect` / `docker_engine` not found | Docker Desktop is not running. Start it and wait until it says *Engine running*. |
+| `docker run` says port 5432 is already allocated | Another Postgres is running. Stop it, or map another port (`-p 5433:5432`) and set `DB_PORT=5433` in `.env`. |
+| `init_db` fails with a password / role error for your Windows user | `.env` is missing `ADMIN_DB_USER=postgres` and `ADMIN_DB_PASSWORD=postgres` (they are in `.env.example`). |
+| `uvicorn` says address already in use (port 8000) | A server is already running; stop it or use `--port 8001` and start the web app with `VITE_API_URL=http://localhost:8001`. |
+| Reports say "not enough data" for everything | `REPORT_AS_OF` is missing from `.env`, so the 90-day window ends today and the demo data has aged out. Add `REPORT_AS_OF=2026-10-16`. |
+| Analysis fails with `429 RESOURCE_EXHAUSTED` | The Gemini free-tier daily quota is used up. The server falls back to the lite models; set `LLM_MODE=stub` to work without Gemini. |
+
 ## Flow B Pipeline
 
 | Step | Type | What Happens |
