@@ -1,0 +1,11 @@
+.venv/
+.env
+.env.alloydb
+__pycache__/
+*.pyc
+media_uploads/
+backups/
+.bin/
+db/alloydb/
+db/*.zip
+mock_storage
