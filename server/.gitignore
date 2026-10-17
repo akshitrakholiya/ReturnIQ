@@ -9,3 +9,4 @@ backups/
 .bin/
 db/alloydb/
 db/*.zip
+mock_storage
