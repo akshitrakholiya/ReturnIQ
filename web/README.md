@@ -4,7 +4,8 @@ React + TypeScript + Vite app with a sidebar per role:
 - **Start a return** (customer) and **Review queue** (reviewer): Flow A.
 - **Product insights** (seller): Flow B product list, report with live progress and clickable evidence, Q&A chat.
 
-Icons come from `lucide-react` and the Inter font from `@fontsource-variable/inter` (both bundled, no CDN).
+Icons come from `lucide-react`; Newsreader, IBM Plex Sans and IBM Plex Mono come from `@fontsource/*` (all bundled, no CDN).
+The visual design follows [docs/SCOUT_SPEC.md](../docs/SCOUT_SPEC.md); decisions are in [docs/UI_REDESIGN.md](../docs/UI_REDESIGN.md).
 
 ```bash
 cd web

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { Status } from '../types'
 
 // Plain-language names for the codes the API uses; anything else falls back to "snake case" -> "snake case".
@@ -34,9 +35,41 @@ export function Confidence({ value }: { value: number }) {
   const tone = value >= 0.75 ? 'good' : value >= 0.6 ? 'mid' : 'low'
   return (
     <div className="conf" title={`${pct}%`}>
-      <div className={`conf-bar ${tone}`} style={{ width: `${pct}%` }} />
+      <div className="conf-track"><div className={`conf-bar ${tone}`} style={{ width: `${pct}%` }} /></div>
       <span>{pct}%</span>
     </div>
+  )
+}
+
+/** The brand mark: a small reticle, in gold. */
+export function Mark({ size = 30 }: { size?: number }) {
+  return (
+    <svg className="mark" width={size} height={size} viewBox="0 0 48 48" aria-hidden="true">
+      <path d="M11.5 12.5 9 4.5l8 4M36.5 12.5 39 4.5l-8 4" /><circle cx="24" cy="26" r="15" /><circle className="core" cx="24" cy="26" r="3.5" />
+    </svg>
+  )
+}
+
+/** Editorial page header: machine-register eyebrow, serif title with an italic key term, optional actions. */
+export function PageHead({ index, module, title, em, children, lede }: {
+  index: string; module: string; title: string; em?: string; lede?: ReactNode; children?: ReactNode
+}) {
+  return (
+    <header className="page-head">
+      <div>
+        <div className="mono-label eyebrow"><span>{index}</span> / {module}</div>
+        <h1>{title}{em && <> <em>{em}</em></>}</h1>
+        {lede && <p className="lede">{lede}</p>}
+      </div>
+      {children && <div className="head-actions">{children}</div>}
+    </header>
+  )
+}
+
+/** Folio heading used inside panels: mono index + label, with a hairline rule. */
+export function Folio({ n, children, aside }: { n?: string; children: ReactNode; aside?: ReactNode }) {
+  return (
+    <div className="folio"><span>{n && <b>[{n}]</b>} {children}</span>{aside && <span className="folio-aside">{aside}</span>}</div>
   )
 }
 
