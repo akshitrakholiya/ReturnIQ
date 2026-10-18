@@ -17,6 +17,7 @@ export interface DemoOrder {
 export interface QueueItem {
   id: string; status: Status; stated_reason: Cause; created_at: string; product_name: string
   ai_root_cause: Cause | null; confidence: number | null; needs_manual_review: boolean | null; media_count: number
+  review_decision: Review['decision'] | null; final_root_cause: Cause | null
 }
 
 export interface Media { id: string; type: 'photo' | 'video'; storage_url: string; mime_type: string; size_bytes: number; view_url: string }

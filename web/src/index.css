@@ -211,6 +211,8 @@ legend { padding: 0; font-size: 13px; font-weight: 500; color: var(--slate); }
 .status-reviewed { background: var(--green-soft); color: var(--green); border-color: var(--green-line); }
 .status-analyzing, .status-pending_analysis { background: var(--navy); color: var(--navy-ink); }
 .status-analysis_failed { background: var(--rose-soft); color: var(--rose); border-color: var(--rose-line); }
+.decision-accepted { background: var(--green-soft); color: var(--green); border-color: var(--green-line); }
+.decision-rejected { background: var(--rose-soft); color: var(--rose); border-color: var(--rose-line); }
 .status { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--slate); white-space: nowrap; }
 .status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--dim); }
 .status.good { color: var(--cream); } .status.good::before { background: var(--green); }

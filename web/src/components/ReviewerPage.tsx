@@ -42,7 +42,8 @@ function Queue({ onOpen }: { onOpen: (id: string) => void }) {
               const mismatch = !!r.ai_root_cause && r.ai_root_cause !== r.stated_reason
               return (
                 <tr key={r.id} className={mismatch ? 'is-mismatch' : ''} onClick={() => onOpen(r.id)}>
-                  <td><code>{r.id}</code></td><td>{productName(r.product_name)}</td><td><StatusBadge status={r.status} /></td>
+                  <td><code>{r.id}</code></td><td>{productName(r.product_name)}</td><td><StatusBadge status={r.status} />{r.review_decision && <> <span className={`badge decision-${r.review_decision}`}
+                    title={r.final_root_cause ? `Final cause: ${label(r.final_root_cause)}` : undefined}>{r.review_decision}</span></>}</td>
                   <td>{label(r.stated_reason)}</td>
                   <td>{r.ai_root_cause ? <>{label(r.ai_root_cause)}{mismatch && <span className="mismatch" title="mismatch"> ≠</span>}</> : '—'}</td>
                   <td>{r.confidence !== null ? <Confidence value={r.confidence} /> : '—'}</td>

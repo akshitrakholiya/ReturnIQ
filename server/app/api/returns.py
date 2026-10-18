@@ -71,10 +71,12 @@ def list_returns(db: DB, status: str | None = None, limit: int = Query(50, le=20
     rows = db.execute(text("""
         SELECT r.id, r.status, r.stated_reason, r.created_at, p.name AS product_name,
                ra.root_cause AS ai_root_cause, ra.confidence, ra.needs_manual_review,
+               rv.decision AS review_decision, rv.final_root_cause,
                (SELECT count(*) FROM return_media m WHERE m.return_id = r.id) AS media_count
         FROM returns r
         JOIN product p ON p.id = r.product_id
         LEFT JOIN return_analysis ra ON ra.return_id = r.id AND ra.is_current
+        LEFT JOIN return_review rv ON rv.return_id = r.id
         WHERE r.status = ANY(CAST(:statuses AS return_status[]))
         ORDER BY r.created_at DESC LIMIT :limit OFFSET :offset"""),
         dict(statuses=statuses, limit=limit, offset=offset)).mappings().all()
