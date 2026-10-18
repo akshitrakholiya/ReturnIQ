@@ -13,7 +13,7 @@ from google import genai
 from google.genai import types
 from pydantic import BaseModel
 
-from app.core.config import gemini_retry_options, settings
+from app.core.config import gemini_chain, gemini_client_kwargs, gemini_retry_options, settings
 from app.services.storage import MAX_LISTING_IMAGES, load_bytes, storage
 from app.tools._db import query
 
@@ -102,7 +102,13 @@ MATCHES_WITHOUT = "ALWAYS null, because there are no listing images to compare w
 
 class GeminiMediaAnalyzer:
     def __init__(self):
-        self.client = genai.Client(http_options=types.HttpOptions(retry_options=gemini_retry_options(), timeout=40_000))
+        self.clients: dict[str | None, genai.Client] = {}
+
+    def _client(self, key: str | None) -> genai.Client:
+        if key not in self.clients:
+            self.clients[key] = genai.Client(**(gemini_client_kwargs(key) or {}), http_options=types.HttpOptions(
+                retry_options=gemini_retry_options(), timeout=40_000))
+        return self.clients[key]
 
     @staticmethod
     def _load(media_id: str) -> tuple[bytes, str] | None:
@@ -134,9 +140,10 @@ class GeminiMediaAnalyzer:
         findings: dict[str, dict] = {}
         if loaded:
             resp, last_err = None, None
-            for model in settings.media_models:  # primary, then fallbacks (free-tier quotas are per model)
+            # each model on every key, then the next model (free-tier quotas are per model and per project)
+            for model, key in gemini_chain(settings.media_models):
                 try:
-                    resp = await self.client.aio.models.generate_content(
+                    resp = await self._client(key).aio.models.generate_content(
                         model=model, contents=[types.Content(role="user", parts=parts)],
                         config=types.GenerateContentConfig(response_mime_type="application/json",
                                                            response_schema=list[_Finding], temperature=0))

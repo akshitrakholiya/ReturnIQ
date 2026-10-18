@@ -13,7 +13,7 @@ from google.genai import types
 from app.agents.stub_model import CONTEXT_MARKER, RETRY_MARKER, StubLlm
 from google.adk.models import Gemini
 
-from app.core.config import gemini_retry_options, settings
+from app.core.config import gemini_client_kwargs, gemini_retry_options, key_label, settings
 from app.tools.multimodal import analyze_media
 from app.tools.policy import search_policy
 
@@ -56,18 +56,20 @@ class TurnResult:
     tokens_out: int | None = None
 
 
-def _model(name: str | None = None):
+def _model(name: str | None = None, key: str | None = None):
     if settings.llm_mode == "stub":
         return StubLlm()
-    return Gemini(model=name or settings.return_model, retry_options=gemini_retry_options())
+    return Gemini(model=name or settings.return_model, retry_options=gemini_retry_options(),
+                  client_kwargs=gemini_client_kwargs(key))
 
 
 class ReturnAgentSession:
     """One analysis: a fresh agent + session. send() can be called again to retry with feedback."""
 
-    def __init__(self, model: str | None = None):
+    def __init__(self, model: str | None = None, key: str | None = None):
         self.calls_used = 0
-        llm = _model(model)
+        llm = _model(model, key)
+        self.key_label = key_label(key)
         self.model_name = getattr(llm, "model", None) or str(llm)
 
         def limit_tool_calls(tool, args, tool_context):
