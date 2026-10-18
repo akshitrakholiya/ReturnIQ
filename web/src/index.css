@@ -89,7 +89,7 @@ h4 { font-family: var(--mono); font-size: 10.5px; font-weight: 500; letter-spaci
 p { margin: 0 0 8px; }
 .muted, small { color: var(--slate); } small { font-size: 12.5px; } .small { font-size: 13px; } .tiny { font-size: 12px; } .cap { text-transform: capitalize; }
 strong { font-weight: 600; }
-code { font-family: var(--mono); font-size: 11.5px; color: var(--cream); background: var(--well); border: 1px solid var(--line); padding: 1px 5px; border-radius: 2px; }
+code { font-family: var(--mono); font-size: 11.5px; color: var(--cream); background: var(--well); border: 1px solid var(--line); padding: 1px 5px; border-radius: 2px; white-space: nowrap; }
 q { quotes: '“' '”'; font-family: var(--serif); font-style: italic; font-size: 1.08em; color: var(--cream); }
 .with-icon { display: inline-flex; align-items: center; gap: 6px; }
 a { color: var(--gold); }
@@ -233,7 +233,8 @@ button.chip:hover:not(:disabled) { background: var(--gold-soft); border-color: v
 .warn { background: var(--gold-soft); color: #FFC766; border-color: var(--gold-line); border-left-color: var(--gold); }
 .ok { background: var(--green-soft); color: #7BE0A5; border-color: var(--green-line); border-left-color: var(--green); }
 .note { background: var(--well); color: var(--slate); border-color: var(--line); border-left-color: var(--dim); }
-.error code { color: inherit; }
+.error code { color: inherit; white-space: normal; }
+.media-fail code { white-space: normal; overflow-wrap: anywhere; }
 
 /* ── Flow A: verdict ── */
 .conf { display: flex; align-items: center; gap: 12px; }
