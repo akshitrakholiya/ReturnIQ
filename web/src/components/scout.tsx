@@ -7,7 +7,7 @@ export type ScoutState = 'IDLE' | 'NOSE_TO_GROUND' | 'HEAD_TILT_ALERT' | 'PROUD_
 interface ScoutValue { state: ScoutState; note: string; since: number; set: (s: ScoutState, note: string) => void; clear: () => void }
 const Ctx = createContext<ScoutValue | null>(null)
 
-const REST = 'Standing by. Open a return or a product to put Scout to work.'
+const REST = 'Standing by. Open a return or a product to put ReturnIQ to work.'
 
 export function ScoutProvider({ children }: { children: ReactNode }) {
   const [s, setS] = useState<{ state: ScoutState; note: string; since: number }>({ state: 'IDLE', note: REST, since: Date.now() })
@@ -38,8 +38,8 @@ export function useScout(state: ScoutState | null, note: string) {
 }
 
 export const SCOUT_COPY: Record<ScoutState, { lead: string; em: string; tail?: string; tone: 'idle' | 'work' | 'alert' | 'ok' }> = {
-  IDLE: { lead: 'Scout is', em: 'Ready.', tone: 'idle' },
-  NOSE_TO_GROUND: { lead: 'Scout is', em: 'Analyzing.', tone: 'work' },
+  IDLE: { lead: 'ReturnIQ is', em: 'Ready.', tone: 'idle' },
+  NOSE_TO_GROUND: { lead: 'ReturnIQ is', em: 'Analyzing.', tone: 'work' },
   HEAD_TILT_ALERT: { lead: '', em: 'Mismatch', tail: 'detected.', tone: 'alert' },
   PROUD_CHECKMARK: { lead: 'Claim', em: 'verified.', tone: 'ok' },
 }
@@ -74,7 +74,7 @@ export function Aperture({ latency }: { latency: number | null }) {
   }, [live, since])
   const elapsed = Math.max(0, now - since) / 1000
   return (
-    <section className={`aperture tone-${copy.tone}`} aria-live="polite" aria-label="Scout status">
+    <section className={`aperture tone-${copy.tone}`} aria-live="polite" aria-label="ReturnIQ status">
       <div className="mono-label"><span>01</span> / APERTURE</div>
       <div className="aperture-body">
         <Reticle state={state} />

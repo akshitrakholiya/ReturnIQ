@@ -27,7 +27,7 @@ function Queue({ onOpen }: { onOpen: (id: string) => void }) {
   return (
     <>
       <PageHead index="02" module="FLOW A · GUARD" title="Review" em="queue."
-        lede="Scout recommends; you decide. Rows marked in rose are where the customer's reason and Scout's finding disagree.">
+        lede="ReturnIQ recommends; you decide. Rows marked in rose are where the customer's reason and ReturnIQ's finding disagree.">
         <button className="secondary with-icon" onClick={() => setTick((t) => t + 1)}><RefreshCw size={14} />Refresh</button>
       </PageHead>
       <div className="card">
@@ -36,7 +36,7 @@ function Queue({ onOpen }: { onOpen: (id: string) => void }) {
         <p className="muted small">“Needs review” also lists returns whose AI analysis failed.</p>
         <ErrorBox error={error} />
         <table className="clickable ledger">
-          <thead><tr><th>Return</th><th>Product</th><th>Status</th><th>Customer said</th><th>Scout says</th><th>Confidence</th><th>Media</th><th>Created</th><th /></tr></thead>
+          <thead><tr><th>Return</th><th>Product</th><th>Status</th><th>Customer said</th><th>ReturnIQ says</th><th>Confidence</th><th>Media</th><th>Created</th><th /></tr></thead>
           <tbody>
             {items.map((r) => {
               const mismatch = !!r.ai_root_cause && r.ai_root_cause !== r.stated_reason
@@ -124,7 +124,7 @@ function ReviewScreen({ id, onBack }: { id: string; onBack: () => void }) {
           <section className="card">
             <Folio n="B" aside="Advisory only">AI verdict</Folio>
             {analyzing &&
-              <div className="working"><Reticle state="NOSE_TO_GROUND" size={56} /><div><p className="working-title">Scout is <em>analyzing.</em></p><p className="muted">Analysis in progress… usually 10–30 s</p></div></div>}
+              <div className="working"><Reticle state="NOSE_TO_GROUND" size={56} /><div><p className="working-title">ReturnIQ is <em>analyzing.</em></p><p className="muted">Analysis in progress… usually 10–30 s</p></div></div>}
             {data.status === 'pending_analysis' && runKey === 0 && (
               <div className="warn">
                 This return has not been analyzed yet.

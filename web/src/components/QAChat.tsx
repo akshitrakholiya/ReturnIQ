@@ -56,7 +56,7 @@ export function QAChat({ productId, ready, onRef, onOpenReturn }: {
     <div className="card chat">
       <div className="mono-label eyebrow"><span>04</span> / CONSOLE</div>
       <div className="row between">
-        <h3 className="with-icon"><MessageSquareText size={16} />Ask <em>Scout</em> about this product</h3>
+        <h3 className="with-icon"><MessageSquareText size={16} />Ask <em>ReturnIQ</em> about this product</h3>
         {turns.length > 0 && <button className="link" onClick={reset}>New chat</button>}
       </div>
       {!ready ? <p className="muted">You can ask questions once the analysis is ready.</p>
