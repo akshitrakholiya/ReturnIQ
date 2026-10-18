@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.db.session import get_session
 from app.schemas.returns import ReturnCreate, ReturnCreated, ReviewIn, ReviewSaved
-from app.services.analysis import run_return_analysis
+from app.services.analysis import expire_stuck_analyses, run_return_analysis
 from app.services.context_builder import ContextError, build_return_context
 from app.services.storage import EXT_INFO, storage
 
@@ -66,6 +66,7 @@ def list_returns(db: DB, status: str | None = None, limit: int = Query(50, le=20
     """Reviewer queue. status=awaiting_review also includes analysis_failed (needs a manual decision)."""
     if status is not None and status not in STATUSES:
         raise HTTPException(422, f"status must be one of {sorted(STATUSES)}")
+    expire_stuck_analyses()
     statuses = ["awaiting_review", "analysis_failed"] if status == "awaiting_review" else ([status] if status else list(STATUSES))
     rows = db.execute(text("""
         SELECT r.id, r.status, r.stated_reason, r.created_at, p.name AS product_name,
@@ -122,6 +123,7 @@ def review_return(return_id: str, body: ReviewIn, db: DB):
 @router.post("/{return_id}/reanalyze", status_code=202)
 def reanalyze_return(return_id: str, background: BackgroundTasks, db: DB):
     """Rerun analysis after a failure or new media. History is kept; the new analysis becomes current."""
+    expire_stuck_analyses(return_id)  # a dead 'analyzing' run becomes 'analysis_failed', which can be rerun
     status = db.execute(text("SELECT status FROM returns WHERE id = :id"), {"id": return_id}).scalar()
     if status is None:
         raise HTTPException(404, "Return not found")
@@ -143,6 +145,7 @@ def get_return_context(return_id: str):
 @router.get("/{return_id}")
 def get_return(return_id: str, db: DB):
     """Everything the review screen needs: return, order context, media, AI verdict, review."""
+    expire_stuck_analyses(return_id)  # so a screen polling a dead analysis stops spinning
     r = db.execute(text("""
         SELECT r.id, r.status, r.stated_reason, r.comment, r.created_at, r.status_updated_at,
                r.order_id, r.product_id, p.name AS product_name, p.category,

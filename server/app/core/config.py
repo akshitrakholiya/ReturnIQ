@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     model_fallbacks: str = "gemini-3.1-flash-lite,gemini-3.5-flash-lite"
     llm_retry_attempts: int = 4  # transient 429/5xx from Gemini, exponential backoff
     manual_review_confidence: float = 0.60
+    # A return still 'analyzing' after this is considered dead (server restarted mid-analysis).
+    # Worst case for a live analysis: 4 attempts x llm_timeout_seconds + one 90 s quota wait (~5.5 min).
+    analysis_timeout_minutes: int = 10
 
     # Flow B (product reports). Thresholds live here so they can be tuned on the demo data.
     report_as_of: str = ""                  # e.g. 2026-10-16: end of every report window; empty = now()

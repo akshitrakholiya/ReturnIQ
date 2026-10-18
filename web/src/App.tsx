@@ -3,6 +3,7 @@ import { BarChart3, ClipboardCheck, PackageOpen, type LucideIcon } from 'lucide-
 import { API } from './api'
 import { AuraPointer } from './components/AuraPointer'
 import { CustomerPage } from './components/CustomerPage'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { ReviewerPage } from './components/ReviewerPage'
 import { SellerPage } from './components/SellerPage'
 import { Aperture, ScoutProvider } from './components/scout'
@@ -66,9 +67,12 @@ export default function App() {
         </aside>
         <main className="content">
           {apiUp === false && <div className="error">Cannot reach the server at {API}. Start it with <code>uvicorn app.main:app --reload</code>.</div>}
-          {tab === 'customer' ? <CustomerPage onReview={openReviewer} />
-            : tab === 'reviewer' ? <ReviewerPage openId={openId} setOpenId={setOpenId} />
-            : <SellerPage onOpenReturn={openReviewer} />}
+          {/* keyed by tab: switching screens clears a crash */}
+          <ErrorBoundary key={tab}>
+            {tab === 'customer' ? <CustomerPage onReview={openReviewer} />
+              : tab === 'reviewer' ? <ReviewerPage openId={openId} setOpenId={setOpenId} />
+              : <SellerPage onOpenReturn={openReviewer} />}
+          </ErrorBoundary>
         </main>
       </div>
       <AuraPointer />

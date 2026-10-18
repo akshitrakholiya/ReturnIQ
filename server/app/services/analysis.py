@@ -116,6 +116,26 @@ async def _analyze(return_id: str, state: dict) -> None:
              f" fixes={fixes}" if fixes else "")
 
 
+def expire_stuck_analyses(return_id: str | None = None, all_running: bool = False) -> int:
+    """Background tasks die with the server process, leaving returns in 'analyzing' forever.
+    Moves such returns to 'analysis_failed' (reviewer decides manually or reanalyzes).
+    all_running=True (server startup): every 'analyzing' return is dead, whatever its age."""
+    with SessionLocal() as db:
+        ids = db.execute(text("""
+            UPDATE returns SET status = 'analysis_failed'
+            WHERE status = 'analyzing' AND (CAST(:id AS text) IS NULL OR id = :id)
+              AND (:all OR status_updated_at < now() - make_interval(mins => :m))
+            RETURNING id"""), {"id": return_id, "all": all_running, "m": settings.analysis_timeout_minutes}).scalars().all()
+        if ids:
+            db.execute(text("""UPDATE agent_run SET status = 'failed', finished_at = now(),
+                                      error = 'analysis did not finish (server restarted?)'
+                               WHERE agent = 'return' AND subject_id = ANY(:ids) AND status = 'running'"""), {"ids": list(ids)})
+        db.commit()
+    for rid in ids:
+        log.warning("analysis of %s did not finish; marked analysis_failed", rid)
+    return len(ids)
+
+
 # ───────────── persistence (the only place Flow A analysis writes) ─────────────
 def _start_run(return_id: str, model: str) -> str:
     with SessionLocal() as db:
