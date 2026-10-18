@@ -66,6 +66,8 @@ python -m scripts.init_db --reset    # roles, database, empty tables (Flow A + F
      python -m scripts.add_category_data                            # 6 footwear / electronics products
      python -m scripts.seed_flow_b                                  # cost model + listing changes
      python -m scripts.plant_flow_b                                 # previous-period history + 4 demo scenarios
+     # Optional: synthesize realistic return photos with defects from catalog images
+     python -m scripts.synthesize_catalog_defects
      ```
    - No data at hand? `python -m scripts.init_db --reset --seed` loads synthetic data instead.
 
@@ -131,4 +133,4 @@ Details: [server/README.md](server/README.md#media-references).
 
 ## Project Rules
 
-See `server/docs/PROJECT_RULES.md`. The `docs/` folders are git-ignored, so ask the team for a copy.
+See [docs/PROJECT_RULES.md](docs/PROJECT_RULES.md) for core engineering rules and guardrails.

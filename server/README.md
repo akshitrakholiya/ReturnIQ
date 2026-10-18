@@ -8,9 +8,11 @@ python3.13 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env                   # set GOOGLE_API_KEY, or LLM_MODE=stub
 python -m scripts.init_db --reset      # roles, database, tables (Flow A + Flow B)
-python -m scripts.load_dataset         # dataset from ../docs/DataSet v1.1
+python -m scripts.load_dataset         # dataset from ../docs/DataSet v1.1 (20 apparel products)
+python -m scripts.add_category_data    # 6 footwear & electronics products
 python -m scripts.seed_flow_b          # cost model per category + sample listing changes
 python -m scripts.plant_flow_b         # previous-period history + 4 planted Flow B scenarios; prints REPORT_AS_OF
+# Optional: python -m scripts.synthesize_catalog_defects  # synthesize defect return photos from catalog images
 uvicorn app.main:app --reload          # http://localhost:8000  (Swagger: /docs)
 ```
 
