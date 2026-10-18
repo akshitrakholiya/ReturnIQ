@@ -59,4 +59,6 @@ Thumbs.db
 .vscode/
 *.swp
 
-docs/
+docs/*
+!docs/screenshots/
+!docs/screenshots/**
