@@ -454,6 +454,16 @@ pre.json { background: var(--well); padding: 12px; border-radius: var(--radius);
   .detail, .review-grid { grid-template-columns: 1fr; } .detail-side, .review-side, .aside-card { position: static; }
   .split, .intake { grid-template-columns: 1fr; }
 }
+@media (max-width: 1180px) and (min-width: 861px) {
+  .shell { grid-template-columns: 208px minmax(0, 1fr); }
+  .rail { padding: 22px 16px 16px; gap: 20px; }
+  .content { padding: 32px 28px 72px; }
+  .card { overflow-x: auto; padding: 18px; }
+  .tiles strong { font-size: 44px; }
+  .stats, .facts { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+  th, td { padding-left: 8px; padding-right: 8px; } th { letter-spacing: .05em; } .conf-track { width: 56px; }
+  .ledger th:nth-child(7), .ledger td:nth-child(7), .ledger th:nth-child(8), .ledger td:nth-child(8), .ledger td.go, .ledger th:last-child { display: none; }
+}
 @media (max-width: 860px) {
   .shell { grid-template-columns: 1fr; }
   .rail { position: sticky; top: 0; z-index: 10; height: auto; flex-direction: row; align-items: center; gap: 14px; padding: 10px 14px; border-right: 0; border-bottom: 1px solid var(--line); overflow-x: auto; background: var(--ground); }
