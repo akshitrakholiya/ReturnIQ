@@ -36,6 +36,10 @@ class Settings(BaseSettings):
 
     # Agents. "stub" = scripted model, no network. "gemini" = real Gemini via ADK (needs credentials).
     llm_mode: str = "stub"
+    # Gemini API keys. GOOGLE_API_KEY is tried first, then GOOGLE_API_KEYS (comma-separated) in order.
+    # Free-tier quota is per Google Cloud project, so extra keys only help if they come from other projects.
+    google_api_key: str = ""
+    google_api_keys: str = ""
     return_model: str = "gemini-3-flash-preview"
     media_model: str = "gemini-3.1-flash-lite"  # separate model = separate quota from return_model
     max_return_tool_calls: int = 3
@@ -86,6 +90,12 @@ class Settings(BaseSettings):
     def media_models(self) -> list[str]:
         return _chain(self.media_model, self.model_fallbacks)
 
+    @property
+    def api_keys(self) -> list[str | None]:
+        """Keys in the order they are tried. [None] = no key configured: the SDK's own default (e.g. Vertex AI)."""
+        keys = [k.strip() for k in [self.google_api_key, *self.google_api_keys.split(",")]]
+        return list(dict.fromkeys(k for k in keys if k)) or [None]
+
     def url(self, user: str | None = None, password: str | None = None, db: str | None = None) -> str:
         import urllib.parse
         user = self.db_user if user is None else user
@@ -121,6 +131,21 @@ def _chain(primary: str, fallbacks: str) -> list[str]:
 
 
 settings = Settings()
+
+
+def gemini_chain(models: list[str]) -> list[tuple[str, str | None]]:
+    """(model, api_key) attempts in order: each model on every key before falling back to the next model."""
+    return [(m, k) for m in models for k in settings.api_keys]
+
+
+def key_label(key: str | None) -> str:
+    """For logs: which key, never the key itself."""
+    keys = settings.api_keys
+    return f"key {keys.index(key) + 1}/{len(keys)}" if key in keys and len(keys) > 1 else "key"
+
+
+def gemini_client_kwargs(key: str | None) -> dict | None:
+    return {"api_key": key} if key else None
 
 
 def gemini_retry_options():

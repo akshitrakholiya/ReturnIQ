@@ -10,7 +10,7 @@ from sqlalchemy import text
 
 from app.agents.return_agent import (ReturnAgentSession, TurnResult, first_message, parse_json,
                                      retry_message)
-from app.core.config import settings
+from app.core.config import gemini_chain, settings
 from app.db.session import SessionLocal
 from app.schemas.verdict import ReturnVerdict
 from app.services.checks import check_verdict, wrong_numbers
@@ -55,9 +55,9 @@ async def _analyze(return_id: str, state: dict) -> None:
         _mark_failed(return_id, None, f"context: {e}")
         return
 
-    models = settings.return_models  # primary + fallbacks
+    models = gemini_chain(settings.return_models)  # (model, key): each model on every key, then the next model
     mi = 0
-    session = ReturnAgentSession(models[mi])
+    session = ReturnAgentSession(*models[mi])
     run_id = state["run_id"] = _start_run(return_id, session.model_name)
     started = time.perf_counter()
     trace: list[dict] = []
@@ -73,15 +73,15 @@ async def _analyze(return_id: str, state: dict) -> None:
         except Exception as e:  # timeout, quota (429), 5xx: the model is the problem, not the output
             error = (f"model timeout (> {settings.llm_timeout_seconds} s)" if isinstance(e, asyncio.TimeoutError)
                      else f"{type(e).__name__}: {str(e)[:300]}")
-            log.warning("%s failed for %s: %s", session.model_name, return_id, error[:160])
+            log.warning("%s (%s) failed for %s: %s", session.model_name, session.key_label, return_id, error[:160])
             if last:
                 break
             if mi + 1 < len(models):
                 mi += 1  # fail over to the next model
-                log.warning("failing over to %s", models[mi])
+                log.warning("failing over to %s", models[mi][0])
             elif (wait := _quota_wait_seconds(e)):
                 await asyncio.sleep(wait)  # no model left: wait out the quota window once
-            session, message = ReturnAgentSession(models[mi]), first_message(context)  # fresh session
+            session, message = ReturnAgentSession(*models[mi]), first_message(context)  # fresh session
             continue
         trace += res.tool_calls
         tool_results += res.tool_results
