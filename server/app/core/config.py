@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     max_media_files: int = 5
     max_photo_bytes: int = 10 * 1024 * 1024
     max_video_bytes: int = 50 * 1024 * 1024
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,*"
 
     # Agents. "stub" = scripted model, no network. "gemini" = real Gemini via ADK (needs credentials).
     llm_mode: str = "stub"
