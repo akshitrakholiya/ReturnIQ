@@ -22,7 +22,7 @@ from pydantic import BaseModel, ValidationError
 
 from app.agents.return_agent import parse_json, retry_message
 from app.agents.stub_model import CONTEXT_MARKER
-from app.core.config import gemini_retry_options, settings
+from app.core.config import gemini_chain, gemini_client_kwargs, gemini_retry_options, key_label, settings
 from app.schemas.flow_b import ToolResult
 from app.services.analysis import _quota_wait_seconds
 
@@ -52,13 +52,14 @@ class AgentResult:
 
 
 class AgentSession:
-    def __init__(self, spec: AgentSpec, model: str, product_id: str):
+    def __init__(self, spec: AgentSpec, model: str, product_id: str, key: str | None = None):
         self.spec, self.product_id = spec, product_id
         self.tool_results: list[ToolResult] = []
         self.calls = 0
         llm = spec.stub() if settings.llm_mode == "stub" and spec.stub else Gemini(
-            model=model, retry_options=gemini_retry_options())
+            model=model, retry_options=gemini_retry_options(), client_kwargs=gemini_client_kwargs(key))
         self.model_name = getattr(llm, "model", None) or str(llm)
+        self.key_label = key_label(key)
         self.agent = LlmAgent(name=f"{spec.name}_agent", model=llm, instruction=spec.instruction,
                               tools=[self._traced(t) for t in spec.tools])
         self.sessions = InMemorySessionService()
@@ -108,11 +109,11 @@ class AgentSession:
 
 async def run_agent(spec: AgentSpec, product_id: str, message: str, schema: type[BaseModel],
                     wrong_numbers: Callable[[BaseModel, list[ToolResult]], list[str]] | None = None) -> AgentResult:
-    """Run one agent to a validated output. Infra errors fail over to the next model; invalid JSON or
+    """Run one agent to a validated output. Infra errors fail over to the next API key, then the next model; invalid JSON or
     wrong numbers get one retry with feedback in the same session."""
-    models = spec.models or settings.return_models
+    models = gemini_chain(spec.models or settings.return_models)  # (model, key) attempts
     mi, retries = 0, 0
-    session, msg = AgentSession(spec, models[mi], product_id), message
+    session, msg = AgentSession(spec, models[mi][0], product_id, models[mi][1]), message
     trace: list[dict] = []
     tokens = [None, None]
     output, error = None, None
@@ -124,14 +125,14 @@ async def run_agent(spec: AgentSpec, product_id: str, message: str, schema: type
         except Exception as e:  # timeout, quota (429), 5xx: the model is the problem, not the output
             error = (f"model timeout (> {settings.llm_timeout_seconds} s)" if isinstance(e, asyncio.TimeoutError)
                      else f"{type(e).__name__}: {str(e)[:300]}")
-            log.warning("%s agent: %s failed: %s", spec.name, session.model_name, error[:160])
+            log.warning("%s agent: %s (%s) failed: %s", spec.name, session.model_name, session.key_label, error[:160])
             if last:
                 break
             if mi + 1 < len(models):
                 mi += 1
             elif (wait := _quota_wait_seconds(e)):
                 await asyncio.sleep(wait)
-            session, msg = AgentSession(spec, models[mi], product_id), message
+            session, msg = AgentSession(spec, models[mi][0], product_id, models[mi][1]), message
             continue
         trace += t
         tokens = [(tokens[0] or 0) + tk[0], (tokens[1] or 0) + tk[1]]

@@ -63,6 +63,16 @@ def check_verdict(verdict: ReturnVerdict, context: dict, tool_results: list[dict
         force = True
         v["evidence"].append({"ref": context["return"]["id"], "finding": "media unavailable"})
         fixes.append("no media: forced manual review")
+    else:
+        # media was uploaded but the vision step failed or skipped files: the verdict rests on text alone
+        analyzed = {f.get("media_id") for tr in tool_results if tr["name"] == "analyze_media"
+                    for f in tr["response"].get("findings", []) if f.get("analyzed", True)}
+        missing = [m["id"] for m in context["media"] if m["id"] not in analyzed]
+        if missing:
+            force = True
+            v["evidence"].append({"ref": context["return"]["id"],
+                                  "finding": f"photo analysis unavailable for {', '.join(missing)}"})
+            fixes.append(f"media not analyzed ({', '.join(missing)}): forced manual review")
     if not v["evidence"]:
         force = True
         fixes.append("no valid evidence left: forced manual review")

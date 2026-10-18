@@ -3,6 +3,7 @@ import { ArrowUp, MessageSquareText } from 'lucide-react'
 import { api } from '../api'
 import type { CheckReport, QAAnswer, ToolResult } from '../types'
 import { ErrorBox } from './common'
+import { useScout } from './scout'
 import { EvidenceList } from './EvidenceView'
 
 interface Turn { question: string; answer: QAAnswer | null; checks?: CheckReport }
@@ -34,6 +35,7 @@ export function QAChat({ productId, ready, onRef, onOpenReturn }: {
       .catch(() => setTurns([]))
   }, [productId])
   useEffect(() => { end.current?.scrollIntoView({ block: 'nearest' }) }, [turns.length, busy])
+  useScout(busy ? 'NOSE_TO_GROUND' : null, 'Reading your return data to answer the question.')
 
   const ask = async (question: string) => {
     question = question.trim()
@@ -52,8 +54,9 @@ export function QAChat({ productId, ready, onRef, onOpenReturn }: {
 
   return (
     <div className="card chat">
+      <div className="mono-label eyebrow"><span>04</span> / CONSOLE</div>
       <div className="row between">
-        <h3 className="with-icon"><MessageSquareText size={16} />Ask about this product</h3>
+        <h3 className="with-icon"><MessageSquareText size={16} />Ask <em>ReturnIQ</em> about this product</h3>
         {turns.length > 0 && <button className="link" onClick={reset}>New chat</button>}
       </div>
       {!ready ? <p className="muted">You can ask questions once the analysis is ready.</p>

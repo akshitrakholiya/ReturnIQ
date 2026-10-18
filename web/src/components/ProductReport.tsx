@@ -3,8 +3,9 @@ import { AlertTriangle, Check, CheckCircle2, Copy, Info, Minus, RotateCw, Trendi
 import { api } from '../api'
 import { usePolling } from '../usePolling'
 import type { EvidencePack, ProductReport, ReportResponse, ReportRootCause, RunStatus } from '../types'
-import { ErrorBox, ago, attrLabel, label, money, pct, when } from './common'
+import { ErrorBox, Folio, ago, attrLabel, label, money, pct, when } from './common'
 import { EvidenceList, RefChip } from './EvidenceView'
+import { Reticle, useScout } from './scout'
 
 const STEPS: { key: RunStatus; name: string; what: string }[] = [
   { key: 'gathering', name: 'Gathering evidence', what: 'Counting returns by size, batch, warehouse and week; reading comments and listing changes' },
@@ -48,10 +49,15 @@ function RunWatcher({ productId, runId, onFinished }: { productId: string; runId
   useEffect(() => { if (data?.run && (data.run.status === 'done' || data.run.status === 'failed')) onFinished(data) },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [data?.run?.status])
+  const step = STEPS.find((x) => x.key === (data?.run?.status ?? 'gathering'))
+  useScout('NOSE_TO_GROUND', `${step?.name ?? 'Gathering evidence'} for this product.`)
   return (
     <div className="card">
-      <h3>Analyzing this product…</h3>
-      <p className="muted">This usually takes under a minute. You can keep browsing; the analysis continues in the background.</p>
+      <div className="working">
+        <Reticle state="NOSE_TO_GROUND" size={56} />
+        <div><p className="working-title">ReturnIQ is <em>analyzing</em> this product.</p>
+          <p className="muted">This usually takes under a minute. You can keep browsing; the analysis continues in the background.</p></div>
+      </div>
       <Progress status={data?.run?.status ?? 'gathering'} startedAt={data?.run?.started_at ?? null} />
       <ErrorBox error={error} />
     </div>
@@ -60,13 +66,26 @@ function RunWatcher({ productId, runId, onFinished }: { productId: string; runId
 
 function Verdict({ r }: { r: ProductReport }) {
   const n = r.root_causes.length
-  const [tone, title] = r.status === 'healthy' ? ['good', 'Looks healthy']
-    : r.status === 'not_enough_data' ? ['neutral', 'Not enough returns yet']
-    : n ? ['bad', `${n} problem${n > 1 ? 's' : ''} found`] : ['neutral', 'No clear problem found']
+  const [tone, title, em] = r.status === 'healthy' ? ['good', 'Looks', 'healthy.']
+    : r.status === 'not_enough_data' ? ['neutral', 'Not enough', 'returns yet.']
+    : n ? ['bad', `${n} problem${n > 1 ? 's' : ''}`, 'found.'] : ['neutral', 'No clear', 'problem found.']
+  // Sum of the code-computed monthly impacts of the problems a person can act on (owner "none" = customer preference).
+  const fixable = r.root_causes.filter((c) => c.owner !== 'none')
+  const leak = fixable.reduce((sum, c) => sum + c.impact.monthly_cost_inr, 0)
   return (
     <div className={`verdict-banner ${tone}`}>
-      {tone === 'good' ? <CheckCircle2 size={20} /> : tone === 'bad' ? <AlertTriangle size={20} /> : <Info size={20} />}
-      <div><strong>{title}</strong><p>{r.summary}</p></div>
+      <div className="hero-copy">
+        <div className="mono-label">{tone === 'bad' ? <><AlertTriangle size={13} /> Attention</> : tone === 'good' ? <><CheckCircle2 size={13} /> All clear</> : <><Info size={13} /> Note</>}</div>
+        <h2>{title} <em>{em}</em></h2>
+        <p>{r.summary}</p>
+      </div>
+      {leak > 0 && (
+        <div className="margin-counter" title="Sum of the monthly cost of the problems you or logistics can fix">
+          <span className="mono-label">Recoverable margin</span>
+          <strong>{money(leak)}<small> / month</small></strong>
+          <span className="mono-label dim">{fixable.length} fixable problem{fixable.length > 1 ? 's' : ''}</span>
+        </div>
+      )}
     </div>
   )
 }
@@ -96,18 +115,26 @@ function ProblemCard({ c, onRef }: { c: ReportRootCause; onRef: (id: string) => 
   const [copied, setCopied] = useState(false)
   const copy = () => { if (c.fix) navigator.clipboard?.writeText(c.fix).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) }) }
   const owner = OWNER[c.owner]
+  const where = chips.length === 0 ? 'Across all orders' : chips.length > 2 ? `${chips.slice(0, 2).join(', ')} +${chips.length - 2}` : chips.join(', ')
   return (
     <div className="card problem">
       <div className="problem-head">
-        <span className="rank">Problem {c.rank}</span>
-        <h3>{c.title}</h3>
+        <span className="rank">Problem {String(c.rank).padStart(2, '0')}</span>
         <span className="badge">{label(c.cause)}</span>
+        <span className="problem-cost"><span className="mono-label">Margin leak</span><strong>{money(c.impact.monthly_cost_inr)}<small> / mo</small></strong></span>
       </div>
+      <h3>{c.title}</h3>
+
+      <ol className="trail" aria-label="Scent trail">
+        <li><span className="mono-label"><b>01</b> Signal</span><strong>{label(c.cause)}</strong><small>≈ {c.impact.extra_returns_per_month} extra returns / month</small></li>
+        <li><span className="mono-label"><b>02</b> Source</span><strong>{where}</strong><small>{owner.text}</small></li>
+        <li><span className="mono-label"><b>03</b> Remedy</span><strong>{c.fix ? 'Fix ready' : c.owner === 'none' ? 'None needed' : 'Unverified'}</strong><small>{owner.hint}</small></li>
+      </ol>
       {chips.length > 0 && <div className="row wrap"><small>Affects</small>{chips.map((x) => <span key={x} className="chip">{x}</span>)}</div>}
 
       {c.fix ? (
         <div className="fix">
-          <div className="row between"><small>What to do</small>
+          <div className="row between"><small className="mono-label">What to do</small>
             <button type="button" className="link with-icon" onClick={copy}>{copied ? <><Check size={14} />Copied</> : <><Copy size={14} />Copy</>}</button></div>
           <p>{c.fix}</p>
         </div>
@@ -188,7 +215,7 @@ export function ReportView({ productId, onRef, onPack, onReady }: {
         <Verdict r={report} />
         <Stats r={report} />
         {report.top_reasons.length > 0 && <>
-          <h4>Why customers return it</h4>
+          <Folio n="i">Why customers return it</Folio>
           <table className="bars"><tbody>{report.top_reasons.map((t) => (
             <tr key={t.cause}><td>{label(t.cause)}</td>
               <td><div className="hbar"><div style={{ width: `${t.share * 100}%` }} /><span>{t.count} · {pct(t.share)}</span></div></td></tr>))}
@@ -206,7 +233,7 @@ export function ReportView({ productId, onRef, onPack, onReady }: {
 
       {report.rejected_hypotheses.length > 0 && (
         <div className="card">
-          <h3>Also checked, and ruled out</h3>
+          <Folio n="ii">Also checked, and ruled out</Folio>
           <ul className="ruled">{report.rejected_hypotheses.map((h, i) => (
             <li key={i}><strong>{h.hypothesis}</strong><p>{h.reason}</p>
               <div className="row wrap">{h.refs.map((r) => <RefChip key={r} id={r} onOpen={onRef} />)}</div></li>))}

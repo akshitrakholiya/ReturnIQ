@@ -13,12 +13,21 @@ from google import genai
 from google.genai import types
 from pydantic import BaseModel
 
-from app.core.config import gemini_retry_options, settings
+from app.core.config import gemini_chain, gemini_client_kwargs, gemini_retry_options, settings
 from app.services.storage import MAX_LISTING_IMAGES, load_bytes, storage
 from app.tools._db import query
 
 MAX_MEDIA = 5
 SEVERITIES = ("none", "low", "medium", "high")
+# Gemini inline requests are size-limited; media past this budget is reported as not analyzed
+# instead of failing the whole call.
+MAX_INLINE_BYTES = 18 * 1024 * 1024
+
+
+def _not_analyzed(media_id: str, description: str) -> dict:
+    """Placeholder finding for a file the model did not look at. analyzed=False lets the checks force manual review."""
+    return dict(media_id=media_id, defect_type=None, severity="none", visible_damage=False,
+                matches_listing=None, description=description, analyzed=False)
 
 
 class MediaAnalyzer(Protocol):
@@ -45,8 +54,7 @@ class StubMediaAnalyzer:
             row = query("""SELECT r.comment, r.stated_reason FROM return_media m
                            JOIN returns r ON r.id = m.return_id WHERE m.id = :id""", id=ref)
             if not row:
-                out.append(dict(media_id=ref, defect_type=None, severity="none", visible_damage=False,
-                                matches_listing=None, description="[stub] media not found"))
+                out.append(_not_analyzed(ref, "[stub] media not found"))
                 continue
             text_ = f"{row[0]['comment'] or ''} {row[0]['stated_reason']}".lower()
             for pattern, (dtype, sev, dmg, match) in _STUB_RULES:
@@ -94,7 +102,13 @@ MATCHES_WITHOUT = "ALWAYS null, because there are no listing images to compare w
 
 class GeminiMediaAnalyzer:
     def __init__(self):
-        self.client = genai.Client(http_options=types.HttpOptions(retry_options=gemini_retry_options(), timeout=40_000))
+        self.clients: dict[str | None, genai.Client] = {}
+
+    def _client(self, key: str | None) -> genai.Client:
+        if key not in self.clients:
+            self.clients[key] = genai.Client(**(gemini_client_kwargs(key) or {}), http_options=types.HttpOptions(
+                retry_options=gemini_retry_options(), timeout=40_000))
+        return self.clients[key]
 
     @staticmethod
     def _load(media_id: str) -> tuple[bytes, str] | None:
@@ -110,20 +124,26 @@ class GeminiMediaAnalyzer:
             matches_rule=MATCHES_WITH if listing else MATCHES_WITHOUT))]
         for i, (data, mime) in enumerate(listing, 1):
             parts += [types.Part(text=f"LISTING image {i} (seller's advertised product):"), types.Part.from_bytes(data=data, mime_type=mime)]
-        loaded, missing = [], []
+        loaded, skipped = [], {}
+        budget = MAX_INLINE_BYTES - sum(len(d) for d, _ in listing)
         for ref in refs:
             item = self._load(ref)
             if item is None:
-                missing.append(ref)
+                skipped[ref] = "media file unreadable"
                 continue
+            if len(item[0]) > budget:
+                skipped[ref] = "file too large to send for analysis"
+                continue
+            budget -= len(item[0])
             parts += [types.Part(text=f"CUSTOMER media_id: {ref}"), types.Part.from_bytes(data=item[0], mime_type=item[1])]
             loaded.append(ref)
         findings: dict[str, dict] = {}
         if loaded:
             resp, last_err = None, None
-            for model in settings.media_models:  # primary, then fallbacks (free-tier quotas are per model)
+            # each model on every key, then the next model (free-tier quotas are per model and per project)
+            for model, key in gemini_chain(settings.media_models):
                 try:
-                    resp = await self.client.aio.models.generate_content(
+                    resp = await self._client(key).aio.models.generate_content(
                         model=model, contents=[types.Content(role="user", parts=parts)],
                         config=types.GenerateContentConfig(response_mime_type="application/json",
                                                            response_schema=list[_Finding], temperature=0))
@@ -141,9 +161,7 @@ class GeminiMediaAnalyzer:
                     findings[f.media_id] = d
         for ref in refs:  # one finding per requested file, always
             if ref not in findings:
-                reason = "media file unreadable" if ref in missing else "model returned no finding"
-                findings[ref] = dict(media_id=ref, defect_type=None, severity="none", visible_damage=False,
-                                     matches_listing=None, description=f"Could not analyze: {reason}.")
+                findings[ref] = _not_analyzed(ref, f"Could not analyze: {skipped.get(ref, 'model returned no finding')}.")
         return [findings[r] for r in refs]
 
 

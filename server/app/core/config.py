@@ -33,9 +33,14 @@ class Settings(BaseSettings):
     max_media_files: int = 5
     max_photo_bytes: int = 10 * 1024 * 1024
     max_video_bytes: int = 50 * 1024 * 1024
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,https://returniq.cloud.run"
 
     # Agents. "stub" = scripted model, no network. "gemini" = real Gemini via ADK (needs credentials).
     llm_mode: str = "stub"
+    # Gemini API keys. GOOGLE_API_KEY is tried first, then GOOGLE_API_KEYS (comma-separated) in order.
+    # Free-tier quota is per Google Cloud project, so extra keys only help if they come from other projects.
+    google_api_key: str = ""
+    google_api_keys: str = ""
     return_model: str = "gemini-3-flash-preview"
     media_model: str = "gemini-3.1-flash-lite"  # separate model = separate quota from return_model
     max_return_tool_calls: int = 3
@@ -44,6 +49,9 @@ class Settings(BaseSettings):
     model_fallbacks: str = "gemini-3.1-flash-lite,gemini-3.5-flash-lite"
     llm_retry_attempts: int = 4  # transient 429/5xx from Gemini, exponential backoff
     manual_review_confidence: float = 0.60
+    # A return still 'analyzing' after this is considered dead (server restarted mid-analysis).
+    # Worst case for a live analysis: 4 attempts x llm_timeout_seconds + one 90 s quota wait (~5.5 min).
+    analysis_timeout_minutes: int = 10
 
     # Flow B (product reports). Thresholds live here so they can be tuned on the demo data.
     report_as_of: str = ""                  # e.g. 2026-10-16: end of every report window; empty = now()
@@ -83,10 +91,22 @@ class Settings(BaseSettings):
     def media_models(self) -> list[str]:
         return _chain(self.media_model, self.model_fallbacks)
 
+    @property
+    def api_keys(self) -> list[str | None]:
+        """Keys in the order they are tried. [None] = no key configured: the SDK's own default (e.g. Vertex AI)."""
+        keys = [k.strip() for k in [self.google_api_key, *self.google_api_keys.split(",")]]
+        return list(dict.fromkeys(k for k in keys if k)) or [None]
+
     def url(self, user: str | None = None, password: str | None = None, db: str | None = None) -> str:
+        import urllib.parse
         user = self.db_user if user is None else user
         password = self.db_password if password is None else password
-        auth = f"{user}:{password}@" if password else (f"{user}@" if user else "")
+        if user and password is not None:
+            auth = f"{urllib.parse.quote_plus(user)}:{urllib.parse.quote_plus(password)}@"
+        elif user:
+            auth = f"{urllib.parse.quote_plus(user)}@"
+        else:
+            auth = ""
         return f"postgresql+psycopg://{auth}{self.db_host}:{self.db_port}/{db or self.db_name}"
 
     @property
@@ -112,6 +132,21 @@ def _chain(primary: str, fallbacks: str) -> list[str]:
 
 
 settings = Settings()
+
+
+def gemini_chain(models: list[str]) -> list[tuple[str, str | None]]:
+    """(model, api_key) attempts in order: each model on every key before falling back to the next model."""
+    return [(m, k) for m in models for k in settings.api_keys]
+
+
+def key_label(key: str | None) -> str:
+    """For logs: which key, never the key itself."""
+    keys = settings.api_keys
+    return f"key {keys.index(key) + 1}/{len(keys)}" if key in keys and len(keys) > 1 else "key"
+
+
+def gemini_client_kwargs(key: str | None) -> dict | None:
+    return {"api_key": key} if key else None
 
 
 def gemini_retry_options():
