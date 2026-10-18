@@ -17,7 +17,7 @@ const CHECKS = [
   { icon: FileSearch, title: 'Photos against the listing', text: 'Every photo is compared with what the seller advertised.' },
   { icon: Truck, title: 'Order, batch and shipment', text: 'Size, production batch, warehouse and delivery history.' },
   { icon: ScrollText, title: 'The return policy', text: 'The recommended action follows the written policy.' },
-  { icon: UserCheck, title: 'A person decides', text: 'Scout recommends. A reviewer makes the final call.' },
+  { icon: UserCheck, title: 'A person decides', text: 'ReturnIQ recommends. A reviewer makes the final call.' },
 ]
 
 function Progress({ returnId, onReview }: { returnId: string; onReview: (id: string) => void }) {
@@ -40,11 +40,11 @@ function Progress({ returnId, onReview }: { returnId: string; onReview: (id: str
           <MediaGallery media={data.media} />
         </section>
         <section className="card">
-          <Folio n="C" aside="Scout">The finding</Folio>
+          <Folio n="C" aside="ReturnIQ">The finding</Folio>
           {working && (
             <div className="working">
               <Reticle state="NOSE_TO_GROUND" size={56} />
-              <div><p className="working-title">Scout is <em>analyzing.</em></p>
+              <div><p className="working-title">ReturnIQ is <em>analyzing.</em></p>
                 <p className="muted">{label(data.status)}… usually 15–30 s. You can leave this page open.</p></div>
             </div>
           )}
@@ -161,7 +161,7 @@ export function CustomerPage({ onReview }: { onReview: (id: string) => void }) {
         </form>
 
         <aside className="card aside-card">
-          <Folio n="i">What Scout checks</Folio>
+          <Folio n="i">What ReturnIQ checks</Folio>
           <ul className="checks">{CHECKS.map(({ icon: Icon, title, text }) => (
             <li key={title}><Icon size={16} strokeWidth={1.5} /><div><strong>{title}</strong><p>{text}</p></div></li>))}
           </ul>

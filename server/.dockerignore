@@ -1,0 +1,9 @@
+.dockerignore
+.gcloudignore
+.git
+.gitignore
+.venv/
+__pycache__/
+*.pyc
+.bin/
+media_uploads/

@@ -7,7 +7,7 @@ export type ScoutState = 'IDLE' | 'NOSE_TO_GROUND' | 'HEAD_TILT_ALERT' | 'PROUD_
 interface ScoutValue { state: ScoutState; note: string; since: number; set: (s: ScoutState, note: string) => void; clear: () => void }
 const Ctx = createContext<ScoutValue | null>(null)
 
-const REST = 'Standing by. Open a return or a product to put Scout to work.'
+const REST = 'Standing by. Open a return or a product to put ReturnIQ to work.'
 
 export function ScoutProvider({ children }: { children: ReactNode }) {
   const [s, setS] = useState<{ state: ScoutState; note: string; since: number }>({ state: 'IDLE', note: REST, since: Date.now() })
@@ -38,8 +38,8 @@ export function useScout(state: ScoutState | null, note: string) {
 }
 
 export const SCOUT_COPY: Record<ScoutState, { lead: string; em: string; tail?: string; tone: 'idle' | 'work' | 'alert' | 'ok' }> = {
-  IDLE: { lead: 'Scout is', em: 'Ready.', tone: 'idle' },
-  NOSE_TO_GROUND: { lead: 'Scout is', em: 'Analyzing.', tone: 'work' },
+  IDLE: { lead: 'ReturnIQ is', em: 'Ready.', tone: 'idle' },
+  NOSE_TO_GROUND: { lead: 'ReturnIQ is', em: 'Analyzing.', tone: 'work' },
   HEAD_TILT_ALERT: { lead: '', em: 'Mismatch', tail: 'detected.', tone: 'alert' },
   PROUD_CHECKMARK: { lead: 'Claim', em: 'verified.', tone: 'ok' },
 }
@@ -61,20 +61,12 @@ export function Reticle({ state, size = 44 }: { state: ScoutState; size?: number
   )
 }
 
-/** Rail block "01 / APERTURE": state, one line of context and live telemetry. */
-export function Aperture({ latency }: { latency: number | null }) {
-  const { state, note, since } = useScoutState()
+/** Rail block "01 / APERTURE": state and one line of context. */
+export function Aperture() {
+  const { state, note } = useScoutState()
   const copy = SCOUT_COPY[state]
-  const [now, setNow] = useState(() => Date.now())
-  const live = state === 'NOSE_TO_GROUND'
-  useEffect(() => {
-    if (!live) return
-    const t = setInterval(() => setNow(Date.now()), 200)
-    return () => clearInterval(t)
-  }, [live, since])
-  const elapsed = Math.max(0, now - since) / 1000
   return (
-    <section className={`aperture tone-${copy.tone}`} aria-live="polite" aria-label="Scout status">
+    <section className={`aperture tone-${copy.tone}`} aria-live="polite" aria-label="ReturnIQ status">
       <div className="mono-label"><span>01</span> / APERTURE</div>
       <div className="aperture-body">
         <Reticle state={state} />
@@ -82,10 +74,6 @@ export function Aperture({ latency }: { latency: number | null }) {
           <p className="aperture-state">{copy.lead} <em>{copy.em}</em>{copy.tail ? ` ${copy.tail}` : ''}</p>
           <p className="aperture-note">{note}</p>
         </div>
-      </div>
-      <div className="telemetry">
-        <span>{live ? `T+${elapsed.toFixed(1)}s` : state === 'IDLE' ? 'IDLE' : 'DONE'}</span>
-        <span className={latency === null ? 'off' : ''}>API {latency === null ? '—' : `${latency}ms`}</span>
       </div>
     </section>
   )

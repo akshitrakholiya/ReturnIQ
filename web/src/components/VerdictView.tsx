@@ -23,7 +23,7 @@ export function VerdictView({ analysis, findings, media, statedReason }: {
       <div className="claimline">
         <div><span className="mono-label">Customer stated</span><strong>{label(statedReason)}</strong></div>
         <div className="relation" aria-label={mismatch ? 'does not match' : 'matches'}>{mismatch ? '≠' : '='}</div>
-        <div><span className="mono-label">Scout found</span><strong>{label(analysis.root_cause)}</strong></div>
+        <div><span className="mono-label">ReturnIQ found</span><strong>{label(analysis.root_cause)}</strong></div>
       </div>
       <div className="row wrap verdict-meta">
         <StateTag ok={!mismatch}>{mismatch ? 'Reason mismatch' : 'Claim verified'}</StateTag>

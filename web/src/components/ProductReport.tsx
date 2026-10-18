@@ -55,7 +55,7 @@ function RunWatcher({ productId, runId, onFinished }: { productId: string; runId
     <div className="card">
       <div className="working">
         <Reticle state="NOSE_TO_GROUND" size={56} />
-        <div><p className="working-title">Scout is <em>analyzing</em> this product.</p>
+        <div><p className="working-title">ReturnIQ is <em>analyzing</em> this product.</p>
           <p className="muted">This usually takes under a minute. You can keep browsing; the analysis continues in the background.</p></div>
       </div>
       <Progress status={data?.run?.status ?? 'gathering'} startedAt={data?.run?.started_at ?? null} />
