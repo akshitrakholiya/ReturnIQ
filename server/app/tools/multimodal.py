@@ -19,6 +19,15 @@ from app.tools._db import query
 
 MAX_MEDIA = 5
 SEVERITIES = ("none", "low", "medium", "high")
+# Gemini inline requests are size-limited; media past this budget is reported as not analyzed
+# instead of failing the whole call.
+MAX_INLINE_BYTES = 18 * 1024 * 1024
+
+
+def _not_analyzed(media_id: str, description: str) -> dict:
+    """Placeholder finding for a file the model did not look at. analyzed=False lets the checks force manual review."""
+    return dict(media_id=media_id, defect_type=None, severity="none", visible_damage=False,
+                matches_listing=None, description=description, analyzed=False)
 
 
 class MediaAnalyzer(Protocol):
@@ -45,8 +54,7 @@ class StubMediaAnalyzer:
             row = query("""SELECT r.comment, r.stated_reason FROM return_media m
                            JOIN returns r ON r.id = m.return_id WHERE m.id = :id""", id=ref)
             if not row:
-                out.append(dict(media_id=ref, defect_type=None, severity="none", visible_damage=False,
-                                matches_listing=None, description="[stub] media not found"))
+                out.append(_not_analyzed(ref, "[stub] media not found"))
                 continue
             text_ = f"{row[0]['comment'] or ''} {row[0]['stated_reason']}".lower()
             for pattern, (dtype, sev, dmg, match) in _STUB_RULES:
@@ -110,12 +118,17 @@ class GeminiMediaAnalyzer:
             matches_rule=MATCHES_WITH if listing else MATCHES_WITHOUT))]
         for i, (data, mime) in enumerate(listing, 1):
             parts += [types.Part(text=f"LISTING image {i} (seller's advertised product):"), types.Part.from_bytes(data=data, mime_type=mime)]
-        loaded, missing = [], []
+        loaded, skipped = [], {}
+        budget = MAX_INLINE_BYTES - sum(len(d) for d, _ in listing)
         for ref in refs:
             item = self._load(ref)
             if item is None:
-                missing.append(ref)
+                skipped[ref] = "media file unreadable"
                 continue
+            if len(item[0]) > budget:
+                skipped[ref] = "file too large to send for analysis"
+                continue
+            budget -= len(item[0])
             parts += [types.Part(text=f"CUSTOMER media_id: {ref}"), types.Part.from_bytes(data=item[0], mime_type=item[1])]
             loaded.append(ref)
         findings: dict[str, dict] = {}
@@ -141,9 +154,7 @@ class GeminiMediaAnalyzer:
                     findings[f.media_id] = d
         for ref in refs:  # one finding per requested file, always
             if ref not in findings:
-                reason = "media file unreadable" if ref in missing else "model returned no finding"
-                findings[ref] = dict(media_id=ref, defect_type=None, severity="none", visible_damage=False,
-                                     matches_listing=None, description=f"Could not analyze: {reason}.")
+                findings[ref] = _not_analyzed(ref, f"Could not analyze: {skipped.get(ref, 'model returned no finding')}.")
         return [findings[r] for r in refs]
 
 
