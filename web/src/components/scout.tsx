@@ -61,18 +61,10 @@ export function Reticle({ state, size = 44 }: { state: ScoutState; size?: number
   )
 }
 
-/** Rail block "01 / APERTURE": state, one line of context and live telemetry. */
-export function Aperture({ latency }: { latency: number | null }) {
-  const { state, note, since } = useScoutState()
+/** Rail block "01 / APERTURE": state and one line of context. */
+export function Aperture() {
+  const { state, note } = useScoutState()
   const copy = SCOUT_COPY[state]
-  const [now, setNow] = useState(() => Date.now())
-  const live = state === 'NOSE_TO_GROUND'
-  useEffect(() => {
-    if (!live) return
-    const t = setInterval(() => setNow(Date.now()), 200)
-    return () => clearInterval(t)
-  }, [live, since])
-  const elapsed = Math.max(0, now - since) / 1000
   return (
     <section className={`aperture tone-${copy.tone}`} aria-live="polite" aria-label="ReturnIQ status">
       <div className="mono-label"><span>01</span> / APERTURE</div>
@@ -82,10 +74,6 @@ export function Aperture({ latency }: { latency: number | null }) {
           <p className="aperture-state">{copy.lead} <em>{copy.em}</em>{copy.tail ? ` ${copy.tail}` : ''}</p>
           <p className="aperture-note">{note}</p>
         </div>
-      </div>
-      <div className="telemetry">
-        <span>{live ? `T+${elapsed.toFixed(1)}s` : state === 'IDLE' ? 'IDLE' : 'DONE'}</span>
-        <span className={latency === null ? 'off' : ''}>API {latency === null ? '—' : `${latency}ms`}</span>
       </div>
     </section>
   )
